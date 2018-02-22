@@ -2,10 +2,11 @@
 from __future__ import unicode_literals
 import time
 from django.test import TestCase
+
 from reservations.models import Reservation
 from reservations.constants import STANDARD, FUTURE, CHECKEDOUT, INHOUSE
 from rest_framework.test import APIClient
-from rest_framework import status
+from rest_framework import status, serializers
 from django.core.urlresolvers import reverse
 
 test_reservation_dict = dict(guest_name="John Doe",
@@ -88,4 +89,20 @@ class ViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(Reservation.objects.first().state, CHECKEDOUT)
+
+    def test_date_validation(self):
+        #check date format validation
+        res = self.client.put(
+            reverse('details', kwargs={'pk': self.reservation.id}),
+            {'departure_date': "thisis not a date"}, format='json'
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue('departure_date' in res.data)
+        #check departure < arrival
+        res = self.client.put(
+            reverse('details', kwargs={'pk': self.reservation.id}),
+            {'departure_date': "2017-01-02"}, format='json'
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue('non_field_errors' in res.data)
 
